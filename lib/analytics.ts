@@ -11,6 +11,16 @@ export const results: Match[] = [
 ];
 export const teams = ["Arsenal","Chelsea","Liverpool","Manchester City","Manchester United","Tottenham"];
 
+export function normalizeTeamName(name: string) {
+  if (name.toLowerCase().includes("tottenham")) return "Tottenham";
+  if (name.toLowerCase().includes("arsenal")) return "Arsenal";
+  if (name.toLowerCase().includes("chelsea")) return "Chelsea";
+  if (name.toLowerCase().includes("liverpool")) return "Liverpool";
+  if (name.toLowerCase().includes("manchester city")) return "Manchester City";
+  if (name.toLowerCase().includes("manchester united")) return "Manchester United";
+  return name;
+}
+
 function seededRandom(seed: number) {
   let state = seed >>> 0;
   return () => {
@@ -19,9 +29,10 @@ function seededRandom(seed: number) {
   };
 }
 
-export function eloRatings(): Record<string, number> {
-  const ratings: Record<string, number> = Object.fromEntries(teams.map(t => [t, 1500]));
-  for (const match of results) {
+export function eloRatings(dataset: Match[] = results): Record<string, number> {
+  const datasetTeams = Array.from(new Set(teams.concat(dataset.flatMap(match => [match.home, match.away]))));
+  const ratings: Record<string, number> = Object.fromEntries(datasetTeams.map(t => [t, 1500]));
+  for (const match of dataset) {
     const expected = 1 / (1 + 10 ** ((ratings[match.away] - ratings[match.home]) / 400));
     const actual = match.homeGoals > match.awayGoals ? 1 : match.homeGoals < match.awayGoals ? 0 : .5;
     const change = 24 * (actual - expected);
@@ -30,8 +41,8 @@ export function eloRatings(): Record<string, number> {
   return ratings;
 }
 
-export function prediction(home: string, away: string) {
-  const ratings = eloRatings();
+export function prediction(home: string, away: string, dataset: Match[] = results) {
+  const ratings = eloRatings(dataset);
   const homeRate = Math.max(.15, 1.55 + (ratings[home] - 1500) / 1000 - (ratings[away] - 1500) / 2600);
   const awayRate = Math.max(.15, 1.15 + (ratings[away] - 1500) / 1000 - (ratings[home] - 1500) / 3200);
   const homeWin = Math.min(.9, Math.max(.05, .5 + (homeRate - awayRate) * .16));
