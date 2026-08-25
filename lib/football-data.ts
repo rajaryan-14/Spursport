@@ -18,6 +18,20 @@ type ApiStanding = {
   goalDifference: number;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function validatePayload(matchesResponse: { matches?: unknown }, standingsResponse: { standings?: unknown[] }) {
+  if (!Array.isArray(matchesResponse.matches)) throw new Error("Football data returned an invalid matches payload");
+  if (!Array.isArray(standingsResponse.standings)) throw new Error("Football data returned an invalid standings payload");
+  for (const match of matchesResponse.matches) {
+    if (!isRecord(match) || !isRecord(match.homeTeam) || !isRecord(match.awayTeam) || typeof match.utcDate !== "string") {
+      throw new Error("Football data returned an invalid match record");
+    }
+  }
+}
+
 async function footballData<T>(path: string): Promise<T> {
   const token = process.env.FOOTBALL_DATA_API_TOKEN;
   if (!token) throw new Error("FOOTBALL_DATA_API_TOKEN is not configured");
@@ -45,6 +59,7 @@ export async function getLivePremierLeagueData() {
     footballData<{ matches: ApiMatch[] }>("/competitions/PL/matches"),
     footballData<{ standings: { type: string; table: ApiStanding[] }[] }>("/competitions/PL/standings")
   ]);
+  validatePayload(matchesResponse, standingsResponse);
   const table = standingsResponse.standings?.find((standing) => standing.type === "TOTAL")?.table ?? standingsResponse.standings?.[0]?.table ?? [];
   return {
     matches: matchesResponse.matches.map((match) => ({
