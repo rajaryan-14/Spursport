@@ -20,6 +20,10 @@ npm run dev
 
 The web dashboard is the Next.js app in `app/` and is designed for Vercel. The Python code in `src/` is retained for model development and data preparation.
 
+## Live data
+
+Copy `.env.example` to `.env.local` and set `FOOTBALL_DATA_API_TOKEN`. The Next.js server route at `/api/live` reads the token securely, fetches Premier League matches and standings, and never exposes the token to the browser. Add the same variable in Vercel under Project Settings → Environment Variables before deploying.
+
 Run the tests with:
 
 ```powershell
