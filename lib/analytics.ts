@@ -50,12 +50,12 @@ export function prediction(home: string, away: string, dataset: Match[] = result
   return { homeRate, awayRate, homeWin, draw, awayWin:1 - homeWin - draw };
 }
 
-export function simulation() {
-  const base: Record<string, number> = Object.fromEntries(teams.map(t => [t, 0]));
-  for (const m of results) { if (m.homeGoals > m.awayGoals) base[m.home] += 3; else if (m.homeGoals < m.awayGoals) base[m.away] += 3; else { base[m.home]++; base[m.away]++; } }
-  const fixtures: Fixture[] = [{home:"Tottenham",away:"Arsenal"},{home:"Liverpool",away:"Tottenham"},{home:"Tottenham",away:"Chelsea"},{home:"Manchester City",away:"Tottenham"}];
-  const counts: Record<string, number[]> = Object.fromEntries(teams.map(t => [t, []]));
+export function simulation(dataset: Match[] = results, remainingFixtures: Fixture[] = [{home:"Tottenham",away:"Arsenal"},{home:"Liverpool",away:"Tottenham"},{home:"Tottenham",away:"Chelsea"},{home:"Manchester City",away:"Tottenham"}]) {
+  const simulationTeams = Array.from(new Set(teams.concat(dataset.flatMap(match => [match.home, match.away]), remainingFixtures.flatMap(fixture => [fixture.home, fixture.away]))));
+  const base: Record<string, number> = Object.fromEntries(simulationTeams.map(t => [t, 0]));
+  for (const m of dataset) { if (m.homeGoals > m.awayGoals) base[m.home] += 3; else if (m.homeGoals < m.awayGoals) base[m.away] += 3; else { base[m.home]++; base[m.away]++; } }
+  const counts: Record<string, number[]> = Object.fromEntries(simulationTeams.map(t => [t, []]));
   const random = seededRandom(42);
-  for (let i=0; i<5000; i++) { const points = {...base}; for (const f of fixtures) { const p = prediction(f.home, f.away); const r = random(); if (r < p.homeWin) points[f.home] += 3; else if (r > p.homeWin + p.draw) points[f.away] += 3; else { points[f.home]++; points[f.away]++; } } const ordered = [...teams].sort((a,b) => points[b] - points[a]); ordered.forEach((t,idx) => counts[t].push(idx+1)); }
-  return teams.map(team => { const positions = counts[team]; return {team, avg:positions.reduce((a,b)=>a+b,0)/positions.length, top4:positions.filter(p=>p<=4).length/positions.length, top6:positions.filter(p=>p<=6).length/positions.length}; }).sort((a,b)=>a.avg-b.avg);
+  for (let i=0; i<5000; i++) { const points = {...base}; for (const f of remainingFixtures) { const p = prediction(f.home, f.away, dataset); const r = random(); if (r < p.homeWin) points[f.home] += 3; else if (r > p.homeWin + p.draw) points[f.away] += 3; else { points[f.home]++; points[f.away]++; } } const ordered = [...simulationTeams].sort((a,b) => points[b] - points[a]); ordered.forEach((t,idx) => counts[t].push(idx+1)); }
+  return simulationTeams.map(team => { const positions = counts[team]; return {team, avg:positions.reduce((a,b)=>a+b,0)/positions.length, top4:positions.filter(p=>p<=4).length/positions.length, top6:positions.filter(p=>p<=6).length/positions.length}; }).sort((a,b)=>a.avg-b.avg);
 }
