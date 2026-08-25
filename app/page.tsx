@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { eloRatings, normalizeTeamName, prediction, simulation, teams, type Fixture, type Match, type ScenarioOverride } from "../lib/analytics";
+import { eloRatings, normalizeTeamName, prediction, simulation, teams, type Fixture, type HistoricalTeamStats, type Match, type ScenarioOverride } from "../lib/analytics";
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 
@@ -11,18 +11,19 @@ export default function Home() {
   const [scenario, setScenario] = useState<Record<string, "AUTO" | "WIN" | "DRAW" | "LOSS">>({});
   const [live, setLive] = useState<{ standings: { position: number; team: string; played: number; points: number; goalDifference: number }[]; matches: { id: number; date: string; status: string; home: string; away: string; homeGoals: number | null; awayGoals: number | null }[]; updatedAt: string } | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [historical, setHistorical] = useState<HistoricalTeamStats[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const liveResults = useMemo<Match[] | undefined>(() => { const completed = live?.matches.filter(m => m.status === "FINISHED" && m.homeGoals !== null && m.awayGoals !== null) ?? []; return completed.length ? completed.map(m => ({ home: normalizeTeamName(m.home), away: normalizeTeamName(m.away), homeGoals: m.homeGoals as number, awayGoals: m.awayGoals as number })) : undefined; }, [live]);
   const liveFixtures = useMemo<Fixture[] | undefined>(() => { const scheduled = live?.matches.filter(m => m.status === "SCHEDULED" || m.status === "TIMED") ?? []; return scheduled.length ? scheduled.map(m => ({ home: normalizeTeamName(m.home), away: normalizeTeamName(m.away) })) : undefined; }, [live]);
   const spursUpcoming = useMemo(() => live?.matches.filter(m => (m.status === "SCHEDULED" || m.status === "TIMED") && (m.home.includes("Tottenham") || m.away.includes("Tottenham"))).slice(0, 6) ?? [], [live]);
   const scenarioOverrides = useMemo<ScenarioOverride[]>(() => spursUpcoming.flatMap(m => { const result = scenario[`${m.home}-${m.away}`]; return result && result !== "AUTO" ? [{ home: normalizeTeamName(m.home), away: normalizeTeamName(m.away), result }] : []; }), [scenario, spursUpcoming]);
-  const match = useMemo(() => prediction(home, away, liveResults), [home, away, liveResults]);
-  const table = useMemo(() => simulation(liveResults, liveFixtures, scenarioOverrides), [liveResults, liveFixtures, scenarioOverrides]);
+  const match = useMemo(() => prediction(home, away, liveResults, historical), [home, away, liveResults, historical]);
+  const table = useMemo(() => simulation(liveResults, liveFixtures, scenarioOverrides, historical), [liveResults, liveFixtures, scenarioOverrides, historical]);
   const ratings = eloRatings(liveResults);
   const spursRow = table.find(row => row.team === "Tottenham") ?? { avg: 6, top4: 0.386, top6: 0.62 };
   const spursMatches = live?.matches.filter(m => m.home.includes("Tottenham") || m.away.includes("Tottenham")).slice(0, 5) ?? [];
   const refreshLive = async () => { setIsRefreshing(true); setLiveError(null); try { const response = await fetch("/api/live", { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setLive(data); } catch (error) { setLiveError(error instanceof Error ? error.message : "Unable to refresh live data"); } finally { setIsRefreshing(false); } };
-  useEffect(() => { void refreshLive(); }, []);
+  useEffect(() => { void refreshLive(); fetch("/api/historical").then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setHistorical(data.teams); }).catch(() => setHistorical([])); }, []);
 
   return <main className="site-shell">
     <section className="hero-section"><header className="topbar"><div className="brand">SPURSCOPE</div><nav><a href="#predict">PREDICT</a><a href="#simulate">SIMULATE</a><a href="#scenario">SCENARIO</a></nav></header><div className="hero-rule" /><div className="hero-mark"><div className="mark-halo" /><img src="/spurs-logo.png" alt="Tottenham Hotspur cockerel" /></div><div className="hero-copy"><div className="kicker">Tottenham Hotspur / Premier League analytics</div><h1>Can Spurs<br />beat the odds?</h1><p>Predict matches. Simulate the season.<br />Explain what the numbers are really saying.</p></div><div className="hero-bottom"><span>SCROLL TO EXPLORE ↓</span><span>{live ? "LIVE DATA CONNECTED" : "LIVE DATA / CONNECTING"}</span></div></section>

@@ -1,6 +1,7 @@
 export type Match = { home: string; away: string; homeGoals: number; awayGoals: number };
 export type Fixture = { home: string; away: string };
 export type ScenarioOverride = Fixture & { result: "WIN" | "DRAW" | "LOSS" };
+export type HistoricalTeamStats = { team: string; matches: number; pointsPerMatch: number; goalsForPerMatch: number; goalsAgainstPerMatch: number; homePointsPerMatch: number; awayPointsPerMatch: number; recentResults: ("W" | "D" | "L")[] };
 
 export const results: Match[] = [
   {home:"Tottenham",away:"Arsenal",homeGoals:2,awayGoals:1}, {home:"Chelsea",away:"Tottenham",homeGoals:1,awayGoals:1},
@@ -42,8 +43,21 @@ export function eloRatings(dataset: Match[] = results): Record<string, number> {
   return ratings;
 }
 
-export function prediction(home: string, away: string, dataset: Match[] = results) {
+function blendedRatings(dataset: Match[], historical: HistoricalTeamStats[] = []) {
   const ratings = eloRatings(dataset);
+  for (const row of historical) {
+    const team = normalizeTeamName(row.team);
+    if (ratings[team] === undefined || row.matches < 10) continue;
+    const pointsSignal = (row.pointsPerMatch - 1.35) * 110;
+    const goalSignal = (row.goalsForPerMatch - row.goalsAgainstPerMatch) * 18;
+    const formSignal = row.recentResults.reduce((total, result) => total + (result === "W" ? 1 : result === "D" ? 0 : -1), 0) * 8;
+    ratings[team] += pointsSignal + goalSignal + formSignal;
+  }
+  return ratings;
+}
+
+export function prediction(home: string, away: string, dataset: Match[] = results, historical: HistoricalTeamStats[] = []) {
+  const ratings = blendedRatings(dataset, historical);
   const homeRate = Math.max(.15, 1.55 + (ratings[home] - 1500) / 1000 - (ratings[away] - 1500) / 2600);
   const awayRate = Math.max(.15, 1.15 + (ratings[away] - 1500) / 1000 - (ratings[home] - 1500) / 3200);
   const homeWin = Math.min(.9, Math.max(.05, .5 + (homeRate - awayRate) * .16));
@@ -51,12 +65,12 @@ export function prediction(home: string, away: string, dataset: Match[] = result
   return { homeRate, awayRate, homeWin, draw, awayWin:1 - homeWin - draw };
 }
 
-export function simulation(dataset: Match[] = results, remainingFixtures: Fixture[] = [{home:"Tottenham",away:"Arsenal"},{home:"Liverpool",away:"Tottenham"},{home:"Tottenham",away:"Chelsea"},{home:"Manchester City",away:"Tottenham"}], overrides: ScenarioOverride[] = []) {
+export function simulation(dataset: Match[] = results, remainingFixtures: Fixture[] = [{home:"Tottenham",away:"Arsenal"},{home:"Liverpool",away:"Tottenham"},{home:"Tottenham",away:"Chelsea"},{home:"Manchester City",away:"Tottenham"}], overrides: ScenarioOverride[] = [], historical: HistoricalTeamStats[] = []) {
   const simulationTeams = Array.from(new Set(teams.concat(dataset.flatMap(match => [match.home, match.away]), remainingFixtures.flatMap(fixture => [fixture.home, fixture.away]))));
   const base: Record<string, number> = Object.fromEntries(simulationTeams.map(t => [t, 0]));
   for (const m of dataset) { if (m.homeGoals > m.awayGoals) base[m.home] += 3; else if (m.homeGoals < m.awayGoals) base[m.away] += 3; else { base[m.home]++; base[m.away]++; } }
   const counts: Record<string, number[]> = Object.fromEntries(simulationTeams.map(t => [t, []]));
   const random = seededRandom(42);
-  for (let i=0; i<5000; i++) { const points = {...base}; for (const f of remainingFixtures) { const override = overrides.find(item => item.home === f.home && item.away === f.away); if (override?.result === "WIN") points[f.home] += 3; else if (override?.result === "LOSS") points[f.away] += 3; else if (override?.result === "DRAW") { points[f.home]++; points[f.away]++; } else { const p = prediction(f.home, f.away, dataset); const r = random(); if (r < p.homeWin) points[f.home] += 3; else if (r > p.homeWin + p.draw) points[f.away] += 3; else { points[f.home]++; points[f.away]++; } } } const ordered = [...simulationTeams].sort((a,b) => points[b] - points[a]); ordered.forEach((t,idx) => counts[t].push(idx+1)); }
+  for (let i=0; i<5000; i++) { const points = {...base}; for (const f of remainingFixtures) { const override = overrides.find(item => item.home === f.home && item.away === f.away); if (override?.result === "WIN") points[f.home] += 3; else if (override?.result === "LOSS") points[f.away] += 3; else if (override?.result === "DRAW") { points[f.home]++; points[f.away]++; } else { const p = prediction(f.home, f.away, dataset, historical); const r = random(); if (r < p.homeWin) points[f.home] += 3; else if (r > p.homeWin + p.draw) points[f.away] += 3; else { points[f.home]++; points[f.away]++; } } } const ordered = [...simulationTeams].sort((a,b) => points[b] - points[a]); ordered.forEach((t,idx) => counts[t].push(idx+1)); }
   return simulationTeams.map(team => { const positions = counts[team]; return {team, avg:positions.reduce((a,b)=>a+b,0)/positions.length, top4:positions.filter(p=>p<=4).length/positions.length, top6:positions.filter(p=>p<=6).length/positions.length}; }).sort((a,b)=>a.avg-b.avg);
 }
