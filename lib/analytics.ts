@@ -11,6 +11,14 @@ export const results: Match[] = [
 ];
 export const teams = ["Arsenal","Chelsea","Liverpool","Manchester City","Manchester United","Tottenham"];
 
+function seededRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
 export function eloRatings(): Record<string, number> {
   const ratings: Record<string, number> = Object.fromEntries(teams.map(t => [t, 1500]));
   for (const match of results) {
@@ -36,6 +44,7 @@ export function simulation() {
   for (const m of results) { if (m.homeGoals > m.awayGoals) base[m.home] += 3; else if (m.homeGoals < m.awayGoals) base[m.away] += 3; else { base[m.home]++; base[m.away]++; } }
   const fixtures: Fixture[] = [{home:"Tottenham",away:"Arsenal"},{home:"Liverpool",away:"Tottenham"},{home:"Tottenham",away:"Chelsea"},{home:"Manchester City",away:"Tottenham"}];
   const counts: Record<string, number[]> = Object.fromEntries(teams.map(t => [t, []]));
-  for (let i=0; i<5000; i++) { const points = {...base}; for (const f of fixtures) { const p = prediction(f.home, f.away); const r = Math.random(); if (r < p.homeWin) points[f.home] += 3; else if (r > p.homeWin + p.draw) points[f.away] += 3; else { points[f.home]++; points[f.away]++; } } const ordered = [...teams].sort((a,b) => points[b] - points[a]); ordered.forEach((t,idx) => counts[t].push(idx+1)); }
+  const random = seededRandom(42);
+  for (let i=0; i<5000; i++) { const points = {...base}; for (const f of fixtures) { const p = prediction(f.home, f.away); const r = random(); if (r < p.homeWin) points[f.home] += 3; else if (r > p.homeWin + p.draw) points[f.away] += 3; else { points[f.home]++; points[f.away]++; } } const ordered = [...teams].sort((a,b) => points[b] - points[a]); ordered.forEach((t,idx) => counts[t].push(idx+1)); }
   return teams.map(team => { const positions = counts[team]; return {team, avg:positions.reduce((a,b)=>a+b,0)/positions.length, top4:positions.filter(p=>p<=4).length/positions.length, top6:positions.filter(p=>p<=6).length/positions.length}; }).sort((a,b)=>a.avg-b.avg);
 }
