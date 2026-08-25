@@ -14,11 +14,11 @@ The checked-in CSV is deliberately a small demo dataset. Replace it with a compl
 ## Run locally
 
 ```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-py -m pip install -r requirements.txt
-streamlit run app.py
+npm install
+npm run dev
 ```
+
+The web dashboard is the Next.js app in `app/` and is designed for Vercel. The Python code in `src/` is retained for model development and data preparation.
 
 Run the tests with:
 
