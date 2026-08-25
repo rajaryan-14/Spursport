@@ -1,7 +1,7 @@
 const API_BASE = "https://api.football-data.org/v4";
 const REQUEST_TIMEOUT_MS = 10_000;
 
-type ApiMatch = {
+export type ApiMatch = {
   id: number;
   utcDate: string;
   status: string;
@@ -10,7 +10,7 @@ type ApiMatch = {
   score?: { fullTime?: { home: number | null; away: number | null } };
 };
 
-type ApiStanding = {
+export type ApiStanding = {
   position: number;
   team: { name: string };
   playedGames: number;
@@ -32,7 +32,7 @@ function validatePayload(matchesResponse: { matches?: unknown }, standingsRespon
   }
 }
 
-async function footballData<T>(path: string): Promise<T> {
+export async function footballData<T>(path: string): Promise<T> {
   const token = process.env.FOOTBALL_DATA_API_TOKEN;
   if (!token) throw new Error("FOOTBALL_DATA_API_TOKEN is not configured");
   let response: Response;
