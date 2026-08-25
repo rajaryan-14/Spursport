@@ -58,8 +58,12 @@ function blendedRatings(dataset: Match[], historical: HistoricalTeamStats[] = []
 
 export function prediction(home: string, away: string, dataset: Match[] = results, historical: HistoricalTeamStats[] = []) {
   const ratings = blendedRatings(dataset, historical);
-  const homeRate = Math.max(.15, 1.55 + (ratings[home] - 1500) / 1000 - (ratings[away] - 1500) / 2600);
-  const awayRate = Math.max(.15, 1.15 + (ratings[away] - 1500) / 1000 - (ratings[home] - 1500) / 3200);
+  const homeStats = historical.find(row => normalizeTeamName(row.team) === home);
+  const awayStats = historical.find(row => normalizeTeamName(row.team) === away);
+  const homeVenueRating = ratings[home] + ((homeStats?.homePointsPerMatch ?? 1.5) - 1.5) * 90;
+  const awayVenueRating = ratings[away] + ((awayStats?.awayPointsPerMatch ?? 1.2) - 1.2) * 90;
+  const homeRate = Math.max(.15, 1.55 + (homeVenueRating - 1500) / 1000 - (awayVenueRating - 1500) / 2600);
+  const awayRate = Math.max(.15, 1.15 + (awayVenueRating - 1500) / 1000 - (homeVenueRating - 1500) / 3200);
   const homeWin = Math.min(.9, Math.max(.05, .5 + (homeRate - awayRate) * .16));
   const draw = .24;
   return { homeRate, awayRate, homeWin, draw, awayWin:1 - homeWin - draw };
