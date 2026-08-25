@@ -32,4 +32,7 @@ select { width:100%; color:var(--text); background:var(--panel2); border:1px sol
 .bar { height:8px; background:#20344a; border-radius:99px; overflow:hidden; margin-top:6px; }
 .bar i { display:block; height:100%; background:var(--blue); border-radius:99px; }
 .notice { color:var(--muted); font-size:12px; line-height:1.5; margin-top:22px; }
+.scenario-grid { display:grid; gap:10px; }
+.scenario-row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:10px 0; border-bottom:1px solid #1c3044; font-size:13px; }
+.scenario-row select { max-width:190px; padding:9px; }
 @media (max-width:800px) { .hero { display:block; } .grid { grid-template-columns:1fr; } .full { grid-column:auto; } }
