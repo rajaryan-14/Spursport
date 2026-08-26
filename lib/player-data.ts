@@ -38,7 +38,11 @@ async function getOfficialTottenhamSquad(): Promise<ApiPlayer[]> {
   });
   if (!response.ok) throw new Error(`Official Spurs squad returned ${response.status}`);
 
-  const html = (await response.text()).split(/Out On Loan/i)[0];
+  const pageHtml = await response.text();
+  const searchableHtml = pageHtml.toLowerCase();
+  const firstLoanMarker = searchableHtml.indexOf("out on loan");
+  const secondLoanMarker = firstLoanMarker >= 0 ? searchableHtml.indexOf("out on loan", firstLoanMarker + 1) : -1;
+  const html = secondLoanMarker > firstLoanMarker ? pageHtml.slice(0, secondLoanMarker) : pageHtml;
   const players: ApiPlayer[] = [];
   const personPattern = /<a\b[^>]*o-person-pod__inner[^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of Array.from(html.matchAll(personPattern))) {
