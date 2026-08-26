@@ -48,7 +48,9 @@ async function getOfficialTottenhamSquad(): Promise<ApiPlayer[]> {
   for (const match of Array.from(html.matchAll(personPattern))) {
     const id = match[1];
     const name = match[2].trim();
-    const body = html.slice(match.index ?? 0, (match.index ?? 0) + 2500);
+    const start = match.index ?? 0;
+    const end = html.indexOf("</a>", start);
+    const body = html.slice(start, end >= 0 ? end : start + 6000);
     const shirtNumber = body.match(/o-person-pod__number[^>]*>\s*(\d+)/i)?.[1];
     const position = body.match(/o-person-pod__position[^>]*>\s*([^<]+)/i)?.[1]?.trim();
     players.push({ id: Number(id), name, position: position || null, shirtNumber: shirtNumber ? Number(shirtNumber) : null, marketValue: null });
