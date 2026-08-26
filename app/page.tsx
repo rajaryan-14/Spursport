@@ -21,7 +21,7 @@ export default function Home() {
   const liveFixtures = useMemo<Fixture[] | undefined>(() => { const scheduled = live?.matches.filter(m => m.status === "SCHEDULED" || m.status === "TIMED") ?? []; return scheduled.length ? scheduled.map(m => ({ home: normalizeTeamName(m.home), away: normalizeTeamName(m.away) })) : undefined; }, [live]);
   const spursUpcoming = useMemo(() => live?.matches.filter(m => (m.status === "SCHEDULED" || m.status === "TIMED") && (m.home.includes("Tottenham") || m.away.includes("Tottenham"))).slice(0, 6) ?? [], [live]);
   const scenarioOverrides = useMemo<ScenarioOverride[]>(() => spursUpcoming.flatMap(m => { const result = scenario[`${m.home}-${m.away}`]; return result && result !== "AUTO" ? [{ home: normalizeTeamName(m.home), away: normalizeTeamName(m.away), result }] : []; }), [scenario, spursUpcoming]);
-  const modelPlayers = useMemo(() => players.map(player => { const selected = selectedLineups[player.team]; return selected?.length ? { ...player, availabilityScore: selected.includes(player.id) ? 1 : 0 } : player; }), [players, selectedLineups]);
+  const modelPlayers = useMemo(() => players.map(player => { const selected = selectedLineups[normalizeTeamName(player.team)]; return selected?.length ? { ...player, availabilityScore: selected.includes(player.id) ? 1 : 0 } : player; }), [players, selectedLineups]);
   const match = useMemo(() => prediction(home, away, liveResults, historical, modelPlayers), [home, away, liveResults, historical, modelPlayers]);
   const table = useMemo(() => simulation(liveResults, liveFixtures, scenarioOverrides, historical, modelPlayers), [liveResults, liveFixtures, scenarioOverrides, historical, modelPlayers]);
   const ratings = eloRatings(liveResults);
