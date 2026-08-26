@@ -32,13 +32,13 @@ function validatePayload(matchesResponse: { matches?: unknown }, standingsRespon
   }
 }
 
-export async function footballData<T>(path: string): Promise<T> {
+export async function footballData<T>(path: string, extraHeaders: Record<string, string> = {}): Promise<T> {
   const token = process.env.FOOTBALL_DATA_API_TOKEN;
   if (!token) throw new Error("FOOTBALL_DATA_API_TOKEN is not configured");
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
-      headers: { "X-Auth-Token": token, Accept: "application/json" },
+      headers: { "X-Auth-Token": token, Accept: "application/json", ...extraHeaders },
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
