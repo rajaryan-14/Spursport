@@ -44,13 +44,11 @@ async function getOfficialTottenhamSquad(): Promise<ApiPlayer[]> {
   const secondLoanMarker = firstLoanMarker >= 0 ? searchableHtml.indexOf("out on loan", firstLoanMarker + 1) : -1;
   const html = secondLoanMarker > firstLoanMarker ? pageHtml.slice(0, secondLoanMarker) : pageHtml;
   const players: ApiPlayer[] = [];
-  const personPattern = /<a\b[^>]*o-person-pod__inner[^>]*>([\s\S]*?)<\/a>/gi;
+  const personPattern = /<a\b[^>]*href=['"]\/player\/(\d+)\/[^'"]+['"][^>]*title=['"]([^'"]+)['"][^>]*>/gi;
   for (const match of Array.from(html.matchAll(personPattern))) {
-    const anchor = match[0];
-    const body = match[1];
-    const id = anchor.match(/href=['"]\/player\/(\d+)\//i)?.[1];
-    const name = anchor.match(/title=['"]([^'"]+)['"]/i)?.[1]?.trim();
-    if (!id || !name) continue;
+    const id = match[1];
+    const name = match[2].trim();
+    const body = html.slice(match.index ?? 0, (match.index ?? 0) + 2500);
     const shirtNumber = body.match(/o-person-pod__number[^>]*>\s*(\d+)/i)?.[1];
     const position = body.match(/o-person-pod__position[^>]*>\s*([^<]+)/i)?.[1]?.trim();
     players.push({ id: Number(id), name, position: position || null, shirtNumber: shirtNumber ? Number(shirtNumber) : null, marketValue: null });
